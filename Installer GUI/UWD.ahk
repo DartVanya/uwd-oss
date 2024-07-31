@@ -15,9 +15,15 @@ SetBatchLines -1
 ProgName := "Universal Watermark Disabler OSS"
 DllName := "uwd_oss_" (A_Is64bitOS ? "x64" : "x86") ".dll"
 ExplorerFrame_reg := "HKLM\SOFTWARE\Classes\CLSID\{ab0b37ec-56f6-4a0e-a8fd-7a8bf7c2da96}\InProcServer32"
+OSVersion := GetVersionEx()
 
 if (A_Is64bitOS && A_PtrSize = 4) {
 	MsgBox, 48, %ProgName%, You attemping to run 32-bit version of UWD-OSS on 64-bit Windows.`n`nPlease run 64-bit version instead.
+	ExitApp, 1
+}
+if VerCompare(OSVersion, "<6.2") {
+	os_num := SubStr(A_OSVersion, InStr(A_OSVersion, "_")+1)
+	MsgBox, 16, %ProgName%, Windows %os_num% is not supported!
 	ExitApp, 1
 }
 
@@ -48,7 +54,7 @@ Gui, Add, Text, xp+8 yp+18 section, Edition:
 Gui, Add, Text, ys xs+90 vEdition, %Edition%
 
 Gui, Add, Text, xs ys+18 section, Build (API):
-Gui, Add, Text, ys xs+90 vBuildApi, % GetVersionEx()
+Gui, Add, Text, ys xs+90 vBuildApi, % OSVersion
 
 Gui, Add, Text, xs ys+18 section, Build (Registry):
 Gui, Add, Text, ys xs+90 vBuildReg, %BuildReg%
@@ -97,14 +103,14 @@ GuiControl, Enable, ButInstall
 progman := DllCall("GetShellWindow", "Ptr")
 WinGet, explorerPID, PID, % "ahk_id " progman
 if (explorerPID) {
-	res := 1
+	res := true
 	try {
 		if (bInstalled)
 			res := Inject(explorerPID, SystemRoot "\System32\" DllName)
 		else {
 			for proc in ComObjGet("winmgmts:").ExecQuery("Select * from Win32_Process WHERE Name='explorer.exe'") {
 				if (proc.ExecutablePath = A_WinDir "\explorer.exe") {
-					DllUnInject(proc.ProcessId, DllName)
+					res &= DllUnInject(proc.ProcessId, DllName)
 				}
 			}
 		}
@@ -141,7 +147,7 @@ ExitApp
 
 GetVersionEx() {
 	size := VarSetCapacity(OSVERSIONINFOEX, A_IsUnicode ? 284 : 156), NumPut(size, &OSVERSIONINFOEX+0, "UInt")
-	if DllCall("kernel32.dll\GetVersionEx", "Ptr",&OSVERSIONINFOEX)
+	if DllCall("Kernel32.dll\GetVersionEx", "Ptr",&OSVERSIONINFOEX)
 		return NumGet(&OSVERSIONINFOEX+4, "UInt") "." NumGet(&OSVERSIONINFOEX+8, "UInt") "." NumGet(&OSVERSIONINFOEX+12, "UInt")
 }
 
